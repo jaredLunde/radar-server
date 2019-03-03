@@ -1,7 +1,19 @@
-from radar_server.fields.field import Field
-from radar_server.fields.float import Float
-from radar_server.fields.integer import Int
-from radar_server.fields.string import String
-from radar_server.fields.array import Array
-from radar_server.fields.boolean import Bool
-from radar_server.fields.obj import Obj
+from .array import Array
+from .field import Field
+from .obj import Obj
+
+
+def Bool(*a, cast=bool, **kw):
+    return Field(*a, cast=cast, **kw)
+
+
+def Float(*a, cast=float, **kw):
+    return Field(*a, cast=cast, **kw)
+
+
+def Int(*a, cast=int, **kw):
+    return Field(*a, cast=cast, **kw)
+
+
+def String(*a, cast=str, **kw):
+    return Field(*a, cast=cast, **kw)

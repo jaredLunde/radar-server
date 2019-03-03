@@ -1,134 +1,110 @@
-from .exceptions import RecordIsNull
 from .interface import Interface
-from .record import Record
-from .fields import Field
-from .query import get_records
-from .utils import get_class_attrs, to_js_key
+from .exceptions import RecordIsNull
+from .utils import get_repr, to_js_key
+from .record import default_resolver, resolve_many
 
 
-class Union(Record):
-    def __new__(cls, *a, **kw):
-        union = super(Interface, cls).__new__(cls)
-        union.__init__(*a, **kw)
-        union.fields = tuple(
-            record
-            for k, record in get_class_attrs(union.__class__)
-            if isinstance(record, (Record, Interface))
-        )
+__all__ = 'Union', 'repr_union'
 
-        if not len(union.fields):
-            raise TypeError(
-                f'Union `{cls.__name__}` does not have any assigned Records. '
-                'Unions must include returnable Records.'
-            )
 
-        if not hasattr(union, 'get_record_type'):
-            raise TypeError(
-                'Union `{cls.__name__}` does not have a `get_record_type` method.'
-                'Unions require a `get_record_type` method which '
-                'returns a string specifying the proper Record to '
-                'resolve for each resolution.'
-            )
+def repr_union(interface):
+    return get_repr('Union', interface)
 
-        return union
 
-    @property
-    def records(self):
-        return self.fields
+def Union(resolve_member_name, **fields):
+    UnionInterface = Interface(fields)
 
-    def get_field(self, field_name):
-        field = getattr(self, field_name)
+    def create_union(resolver=default_resolver, many=False):
+        def init(union_name):
+            def resolve_member(state, fields=None, index=None, record=None, **context):
+                state = resolver(
+                    state,
+                    union_name,
+                    fields=fields,
+                    index=index,
+                    record=record,
+                    **context
+                ) or {}
 
-        if isinstance(field, Record):
-            return field
+                if not isinstance(state, dict):
+                    raise TypeError(
+                        'Data returned by `resolver` functions must be of type `dict`. '
+                        f'"{state}" is not a dict in: {repr_union(UnionInterface)}'
+                    )
 
-        raise FieldNotFound(f'Field named `{field_name}` was not found in '
-                            f'Record `{self.__NAME__}`')
+                record_type = resolve_member_name(state, fields=fields, **context)
 
-    def resolve_field(self, field_name, state, fields=None, record=None, **context):
-        field = self.get_field(field_name)
-        try:
-            return field.resolve(fields, state, **context)
-        except RecordIsNull:
-            return None
+                if record_type is None:
+                    raise TypeError(
+                        'The `resolve_member_name` function did not return a string in: '
+                        + repr_union(UnionInterface)
+                    )
 
-    def resolve_fields(self, fields, state, **context):
-        # TODO: only resolve if record type is in @fields
-        fields = fields or {}
-        record_type = self.get_record_type(state, fields=fields, **context)
-        
-        if record_type is None:
-            raise TypeError('Unions must return a string from their '
-                            '`get_record_type` method specifying the proper Record'
-                            'to resolve for each invocation. Check the '
-                            f'`get_record_type` method of {self.__class__.__name__}')
+                field = UnionInterface[record_type]
 
-        yield to_js_key(record_type), self.resolve_field(
-            record_type,
-            state,
-            fields=fields.get(record_type),
-            **context
-        )
+                try:
+                    fields = None if fields is None else fields.get(record_type)
+                    return {to_js_key(record_type): field(state, fields=fields, **context)}
+                except RecordIsNull:
+                    return {to_js_key(record_type): None}
 
-    def _resolve(self, fields, state, index=None, **context):
-        state = self.reduce(state, fields=fields, index=index, **context) or {}
+            return resolve_many(resolve_member) if many is True else resolve_member
 
-        if not isinstance(state, dict):
-            raise TypeError('Data returned by `reduce` methods must be of type'
-                            f'`dict`. "{state}" is not a dict in Record: '
-                            f'{self.__class__.__name__}')
+        return init
 
-        output = dict(self.resolve_fields(fields, state, **context))
+    return create_union
 
-        try:
-            return self._callback(output, self)
-        except TypeError:
-            return output
+
 
 '''
-from radar_server import Interface, Record, Query, Union, fields
+# Test
+
+from radar_server import Record, Union, fields
+
+MyRecord = Record(id=fields.Int(key=True))
+MyUnion = Union(lambda state, *a, **kw: state.get('target_type'), foo=MyRecord(), bar=MyRecord())
+
+MyUnionRecord = Record(
+    id=fields.Int(key=True),
+    foobar=MyUnion()
+) 
+
+one = MyUnionRecord()('foobar')
+one({'id': 123456, 'foobar': {'id': 1234, 'target_type': 'foo'}}, None)
+one({'id': 123456, 'foobar': {'id': 1234, 'target_type': 'bar'}}, None)
+
+
+# Benchmark
+
 from vital.debug import Timer
+from radar_server_legacy import Record as LegacyRecord, Union as LegacyUnion, fields as legacy_fields
 
-class MyInterface(Interface):
-    foo = fields.String(key=True)
-    bar = fields.Int()
+Timer(MyUnion).time(1E6)
+Timer(MyUnion(), 'foobar').time(1E6)
+Timer(MyUnion()('foobar'), {'id': 1234, 'target_type': 'foo'}).time(1E6)
+Timer(MyUnionRecord).time(1E6)
+Timer(MyUnionRecord(), 'one').time(1E6)
+Timer(one, {'id': 123456, 'foobar': {'id': 1234, 'target_type': 'foo'}}, None).time(1E6)
 
-class MySubInterface(MyInterface):
-    baz = fields.Array()
 
-MySubInterface()
+class MyLegacyRecord(LegacyRecord):
+    id = legacy_fields.Int(key=True)
 
-from vital.debug import Timer
-Timer(MySubInterface).time(1E4)
 
-class MyRecord(Record):
-    implements = [MySubInterface]
-    boz = fields.Float()
-
-class MyRecord2(Record):
-    boz = fields.Float(key=True)
-
-class MyUnion(Union):
-    my = MyRecord()
-    your = MyRecord2()
+class MyLegacyUnion(LegacyUnion):
+    foo = MyLegacyRecord()
+    bar = MyLegacyRecord()
     @staticmethod
     def get_record_type(state, *a, **kw):
-        return 'your' if state.get('your') else 'my'
+        return state.get('target_type')
 
-MyUnion().resolve({'my': {'foo': None}}, {'my': {'foo': 'bar'}})
 
-class MyUnionMany(Union):
-    my = MyRecord(many=True)
-    your = MyRecord2()
-    @staticmethod
-    def get_record_type(state, *a, **kw):
-        return 'your' if state.get('your') else 'my'
+class MyLegacyUnionRecord(LegacyRecord):
+    id = legacy_fields.Int(key=True)
+    foobar = MyLegacyUnion()
 
-MyUnionMany().resolve({'my': {'foo': None}}, {'my': [{'foo': 'bar'}]})
 
-class MyRecordMany(Record):
-    key = fields.String(key=True)
-    my = MyUnion(many=True)
-
-MyRecordMany().resolve({'my': {'my': {'foo': None}, 'your': {'boz': None}}}, {'my': [{'my': {'foo': 'bar'}}, {'my': {'foo': 'bar2'}}, {'your': {'boz': 1.0}}], 'key': 1})
+mur = MyLegacyUnionRecord()
+mur.__NAME__ = 'foo'
+Timer(mur.resolve, fields={'foobar': {'foo': {}, 'bar': {}}}, state={'id': 123456, 'foobar': {'id': 1234, 'target_type': 'foo'}}, ).time(1E6)
 '''

@@ -1,5 +1,6 @@
 .idea
 .git
 .python-version
+*.egg-info
 dist/
 __pycache__

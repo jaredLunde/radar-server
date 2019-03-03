@@ -10,6 +10,7 @@ homepage = "https://github.com/jaredLunde/radar-resolver"
 [tool.poetry.dependencies]
 python = "^3.5"
 vital-tools = "^0.1.13"
+trie-memoize = "^0.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"

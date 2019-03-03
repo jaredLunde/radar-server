@@ -1,67 +1,65 @@
-from .field import Field
 from ..interface import Interface
 from ..exceptions import FieldNotFound
 from ..utils import to_js_key
+from .field import Field
 
 
 __all__ = 'Obj',
 
 
-class Obj(Field, Interface):
-    __slots__ = Field.__slots__
+def Obj(**interface_fields):
+    ObjInterface = Interface(interface_fields)
 
-    def __init__(self, not_null=False, default=None, cast=dict):
-        def resolver(state, fields=None, **context):
-            return {
-                to_js_key(field.__NAME__): field.resolve(state[self.__NAME__], **context)
-                for field in self.get_fields(fields)
-            }
-
-        super().__init__(
-            resolver,
-            key=False,
-            not_null=not_null,
-            default=default,
-            cast=cast
-        )
-
-    def get_fields(self, fields):
+    def get_resolvers(fields):
         if not fields:
-            for field in self.fields:
-                yield field
+            for field_name, resolve in ObjInterface.items():
+                yield to_js_key(field_name), resolve
         else:
             for field_name in fields:
-                field = getattr(self, field_name)
-                if field in self.fields:
-                    yield field
-                else:
-                    raise FieldNotFound(f'Field "{field}" was not found in '
-                                        f'the object "{self.__NAME__}"')
+                yield to_js_key(field_name), ObjInterface[field_name]
 
-    def resolve(self, state, **context):
-        return self.__call__(self.resolver(state, **context))
+    def default_resolver(state, name, fields=None, **context):
+        return {
+            field_name: resolve(state[name], **context)
+            for field_name, resolve in get_resolvers(fields)
+        }
 
-    def copy(self):
-        return self.__class__(not_null=self.not_null,
-                              default=self.default,
-                              cast=self.cast)
+    def create_obj(resolver=default_resolver, *a, **kw):
+        return Field(resolver, *a, **kw)
+
+    return create_obj
+
 
 '''
-from radar_server import Record, fields
-from vital.debug import Timer
+from radar_server import fields
+from radar_server_legacy import fields as legacy_fields
+from vital.debug import Compare
 
-class MyObj(fields.Obj):
-    foo = fields.String()
+MyObj = fields.Obj(
+    foo=fields.Int(),
+    bar=fields.String()
+)
 
+class MyObjLegacy(legacy_fields.Obj):
+    foo = legacy_fields.Int()
+    bar = legacy_fields.String()
 
-class MyRecord(Record):
-    uid = fields.Int(key=True)
-    my = MyObj()
+Compare(MyObj, MyObjLegacy).time(1E6)
 
-my = MyObj()
-my.__NAME__ = 'my'
-my.resolve({'my': {'foo': 'bar', 'bar': 'baz'}})
-MyRecord().resolve({'my': None}, {'my': {'foo': 'bar', 'bar': 'baz'}, 'uid': 1234})
+foobar = MyObj()('foobar')
+foobar_legacy = MyObjLegacy()
+foobar_legacy.__NAME__ = 'foobar'
 
-Timer(my.resolve, state={'my': {'foo': 'bar', 'bar': 'baz'}}).time(1E4)
+foobar_legacy.resolve({'foobar': {'foo': '1234', 'bar': 1234}})
+
+Compare(foobar, foobar_legacy.resolve).time(
+    1E6,
+    {'foobar': {'foo': '1234', 'bar': 1234}}
+)
+
+Compare(foobar, foobar_legacy.resolve).time(
+    1E6,
+    {'foobar': {'foo': '1234', 'bar': 1234}},
+    fields={'foo': None}
+)
 '''

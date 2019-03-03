@@ -2,89 +2,72 @@ try:
     import ujson as json
 except ImportError:
     import json
-
-from radar_server.exceptions import (
-    QueryError,
-    ActionError,
-    ActionErrors,
-    QueryErrors,
-    OperationNotFound
-)
+import functools
+from .exceptions import QueryErrors
+from .interface import Interface
+from .query import Query
 
 
-empty_dict = {}
+__all__ = 'Radar',
 
 
-class Radar(object):
-    __slots__ = 'queries', 'raises'
+def Radar(**queries):
+    RadarInterface = Interface(queries)
 
-    def __init__(self, queries=None, raises=True):
-        self.queries = {}
-        if queries:
-            self.install_query(*queries)
-        self.raises = raises
+    def add_query(**kw):
+        query = Query(**kw)
 
-    def __call__(self, state, is_json=True):
-        return self.resolve(state, is_json=is_json)
+        def wrapper(resolver):
+            name = resolver.__name__
+            RadarInterface[name] = functools.wraps(resolver)(query(resolver)(name))
 
-    def resolver(self, *a, **kw):
-        def apply(cls):
-            self.install_query(cls(*a, **kw))
-            return cls
-        return apply
+        return wrapper
 
-    query = resolver
-    action = query
-
-    def add(self, *queries):
-        for query in queries:
-            query_name = (
-                query.__NAME__
-                if hasattr(query, '__NAME__') else
-                query.__class__.__name__
-            )
-            query.__NAME__ = query_name
-            self.queries[query_name] = query
-
-    install_query = add
-    install_action = add
-
-    def remove(self, *queries):
-        for query in queries:
-            del self.queries[query.name]
-
-    def resolve_query(self, query_data):
-        # query_requires = query_data.get('contains', empty_dict)
-        query_requires = query_data.get('requires', empty_dict)
-        query_params = query_data.get('props', empty_dict)
-        query = self.get_query(query_data['name'])
-        result = {}
+    def resolve_query(op, context):
+        query = RadarInterface[op['name']]
+        requires = op.get('requires')
+        props = op.get('props')
 
         try:
-            result = query.resolve(query_requires, query_params)
-        except (QueryError, ActionError, ActionErrors, QueryErrors):
-            result = None
-        except Exception as e:
-            if self.raises:
-                raise e
+            return query(requires, props, context)
+        except QueryErrors as e:
+            return {'isRadarError': True, error: e.for_json()}
 
-        return result
+    def resolve(ops, **context):
+        ops = json.loads(ops) if isinstance(ops, str) else ops
+        return [resolve_query(op, context) for op in ops]
 
-    def resolve(self, operations, is_json=True):
-        operations = json.loads(operations) \
-            if isinstance(operations, str) else operations
+    resolve.queries = RadarInterface
+    resolve.Query = add_query
+    return resolve
 
-        out = []
-        add_out = out.append
 
-        for operation in operations:
-            if operation is None:
-                add_out(None)
-            elif operation['name'] in self.queries:
-                add_out(self.resolve_query(operation))
-            else:
-                raise OperationNotFound(
-                    f'A query with the name "{operation["name"]}" was not found.'
-                )
+'''
+# Test
 
-        return out
+from radar_server import Radar, Query, Record, fields
+
+MyRecord = Record(id=fields.Int(key=True), foo_bar=fields.String(), baz=fields.String())
+
+@Query(my=MyRecord())
+def FooQuery(records, **props):
+    return {
+        'my': {'id': '1234', 'foo_bar': 1234, 'baz': None}
+    }
+
+radar = Radar(FooQuery=FooQuery)
+
+@radar.Query(my_b=MyRecord())
+def FooQuery(records, **props):
+    return {
+        'my_b': {'id': '1234', 'foo_bar': 1234, 'baz': None}
+    }
+
+radar([{'name': 'FooQuery'}])
+
+
+# Bench 
+
+from vital.debug import Timer
+Timer(radar, [{'name': 'FooQuery'}]).time(1E6)
+'''

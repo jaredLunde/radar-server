@@ -12,5 +12,8 @@ def cast_array(cast):
     return apply
 
 
-def Array(*a, cast=str, **kw):
-    return Field(*a, cast=cast_array(cast), **kw)
+class Array(Field):
+    __slots__ = Field.__slots__
+
+    def __init__(self, *a, cast=str, **kw):
+        super().__init__(*a, cast=cast_array(cast), **kw)

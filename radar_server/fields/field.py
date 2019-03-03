@@ -1,4 +1,5 @@
-from vital.debug import preprX
+from ..record import repr_record
+from ..query import repr_query
 
 
 __all__ = 'Field',
@@ -8,61 +9,60 @@ def default_cast(x):
     return x
 
 
-def default_resolver(field_name, state, record=None, query=None, **context):
+def default_resolver(state, field_name, record=None, query=None, query_name=None, **context):
     try:
         return state[field_name]
     except (KeyError, TypeError):
+        query_ref = ''
+
+        if query_name is not None:
+            query_ref = query_name
+        elif query is not None:
+            query_ref = f' of Query `{repr_query(query)}`'
+
         raise KeyError(
-            f'Key `{field_name}` not found in Record  `{record.__NAME__}` of '
-            f'Query `{query.__NAME__}`.'
+            f'Key `{field_name}` not found {repr_record(record)}{query_ref}.'
         )
 
 
-class Field(object):
-    __slots__ = 'key', 'cast', 'resolver', 'not_null', 'default', '__NAME__'
+def Field(
+    resolver=default_resolver,
+    default=None,
+    cast=default_cast,
+    not_null=False,
+    key=False,
+):
+    def init(name):
+        def resolve(state, **context):
+            value = resolver(state, name, **context)
 
-    def __init__(
-        self,
-        resolver=default_resolver,
-        key=False,
-        not_null=False,
-        default=None,
-        cast=default_cast
-    ):
-        """ @key: Universally unique field which identifies your Schema """
-        self.resolver = resolver
-        self.not_null = not_null
-        self.cast = cast
-        self.default = default
-        self.key = key
-        self.__NAME__ = None
-
-    __repr__ = preprX('__NAME__', 'key', address=False)
-
-    def __call__(self, value=None):
-        if value is not None:
-            try:
-                return self.cast(value) if not isinstance(value, self.cast) else value
-            except TypeError:
-                return self.cast(value)
-        else:
-            if self.default is None:
-                if self.not_null:
-                    raise ValueError(f'Field `{self.__NAME__}` cannot be null.')
-                else:
-                    return None
+            if value is not None:
+                return cast(value)
             else:
-                return self.default
+                if default is None:
+                    if not_null:
+                        raise ValueError(f'Field `{name}` cannot be null.')
+                    else:
+                        return None
+                else:
+                    return default
 
-    def copy(self):
-        return self.__class__(
-            self.resolver,
-            key=self.key,
-            not_null=self.not_null,
-            default=self.default,
-            cast=self.cast
-        )
+        # setattr(resolve, 'name', key)
+        setattr(resolve, 'key', key)
+        return resolve
 
-    def resolve(self, state, **context):
-        output = self.resolver(self.__NAME__, state, **context)
-        return self.__call__(output)
+    return init
+
+
+'''
+from radar_server import fields
+from radar_server_legacy import fields as legacy_fields
+from vital.debug import Timer, Compare
+
+Compare(fields.String, legacy_fields.String).time(1E6, key=True)
+
+foo = fields.String()('foo')
+legacy_foo = legacy_fields.String()
+legacy_foo.__NAME__ = 'foo'
+Compare(foo, legacy_foo.resolve).time(1E6, {'foo': 1.0})
+'''

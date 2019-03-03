@@ -2,42 +2,28 @@ class FieldNotFound(Exception):
     pass
 
 
-class MissingApplyMethod(Exception):
+class MissingRecordKey(Exception):
     pass
 
 
-class RecordKeyError(Exception):
+class EmptyRecordKey(Exception):
     pass
 
 
-class QueryError(Exception):
-    pass
-
-
-class ActionError(Exception):
+class TooManyRecordKeys(Exception):
     pass
 
 
 class QueryErrors(Exception):
-
     def __init__(self, *messages, code=None):
-        self.messages = list(messages)
-        self.code = code
+        self.messages = messages
 
     def for_json(self):
-        return {
-            'errors': [{'message': message, 'code': self.code}
-                       for message in self.messages]
-        }
-
-
-class ActionErrors(QueryErrors):
-    pass
+        return [
+            message if hasattr(message, 'for_json') is False else message
+            for message in self.messages
+        ]
 
 
 class RecordIsNull(Exception):
-    pass
-
-
-class OperationNotFound(Exception):
     pass
