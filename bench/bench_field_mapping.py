@@ -10,10 +10,10 @@ def bench_mapping_init():
     Timer(fields.mapping(foo=fields.string(), bar=fields.integer())(), 'foobar').time(1E5)
 
 
-def bench_field_full_init():
+def bench_mapping_full_init():
     Timer(lambda: fields.mapping(foo=fields.string(), bar=fields.integer())()('foobar')).time(1E5)
 
 
-def bench_field_get_value():
+def bench_mapping_get_value():
     foobar = fields.mapping(foo=fields.string(), bar=fields.integer())()('foobar')
     Timer(foobar, {'foobar': {'foo': 'bar', 'bar': '3'}}).time(1E5)
