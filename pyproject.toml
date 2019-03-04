@@ -5,7 +5,7 @@ description = ""
 authors = ["Jared Lunde <jared@BeStellar.co>"]
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/jaredLunde/radar-resolver"
+homepage = "https://github.com/jaredLunde/radar-server"
 
 [tool.poetry.dependencies]
 python = "^3.5"
