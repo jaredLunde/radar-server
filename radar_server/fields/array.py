@@ -1,16 +1,16 @@
-import functools
-from .field import Field
+from functools import wraps
+from .field import field
 
 
-__all__ = 'Array',
+__all__ = 'array',
 
 
 def cast_array(cast):
-    @functools.wraps(cast)
+    @wraps(cast)
     def apply(value):
         return list(map(cast, value))
     return apply
 
 
-def Array(*a, cast=str, **kw):
-    return Field(*a, cast=cast_array(cast), **kw)
+def array(*a, cast=str, **kw):
+    return field(*a, cast=cast_array(cast), **kw)

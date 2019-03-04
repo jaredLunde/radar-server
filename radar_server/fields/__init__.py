@@ -1,19 +1,19 @@
-from .array import Array
-from .field import Field
-from .obj import Obj
+from .array import array
+from .field import field
+from .mapping import mapping
 
 
-def Bool(*a, cast=bool, **kw):
-    return Field(*a, cast=cast, **kw)
+def boolean(*a, cast=bool, **kw):
+    return field(*a, cast=cast, **kw)
 
 
-def Float(*a, cast=float, **kw):
-    return Field(*a, cast=cast, **kw)
+def single(*a, cast=float, **kw):
+    return field(*a, cast=cast, **kw)
 
 
-def Int(*a, cast=int, **kw):
-    return Field(*a, cast=cast, **kw)
+def integer(*a, cast=int, **kw):
+    return field(*a, cast=cast, **kw)
 
 
-def String(*a, cast=str, **kw):
-    return Field(*a, cast=cast, **kw)
+def string(*a, cast=str, **kw):
+    return field(*a, cast=cast, **kw)

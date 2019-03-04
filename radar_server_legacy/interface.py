@@ -70,9 +70,9 @@ class Interface(object, metaclass=MetaInterface):
 
 
 '''
-from radar_server_legacy import Interface, fields
+from radar_server_legacy import interface, fields
 
-class MyInterface(Interface):
+class MyInterface(interface):
     foo = fields.String(key=True)
     bar = fields.Int()
 

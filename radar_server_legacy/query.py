@@ -124,10 +124,10 @@ class Query(object, metaclass=MetaQuery):
 
 
 '''
-from radar_server_legacy import Interface, Record, Query, fields
+from radar_server_legacy import interface, Record, Query, fields
 from vital.debug import Timer
 
-class MyInterface(Interface):
+class MyInterface(interface):
     foo = fields.String(key=True)
     bar = fields.Int()
 

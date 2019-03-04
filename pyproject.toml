@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "radar-server"
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = ["Jared Lunde <jared@BeStellar.co>"]
 readme = "README.md"
@@ -9,13 +9,17 @@ homepage = "https://github.com/jaredLunde/radar-resolver"
 
 [tool.poetry.dependencies]
 python = "^3.5"
-vital-tools = "^0.1.13"
 trie-memoize = "^0.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
 twine = "^1.13"
 
+[tool.poetry.scripts]
+bench = 'bench:main'
+tests = 'tests:main'
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+

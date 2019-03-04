@@ -86,10 +86,10 @@ class Union(Record):
             return output
 
 '''
-from radar_server_legacy import Interface, Record, Query, Union, fields
+from radar_server_legacy import interface, Record, Query, Union, fields
 from vital.debug import Timer
 
-class MyInterface(Interface):
+class MyInterface(interface):
     foo = fields.String(key=True)
     bar = fields.Int()
 

@@ -200,9 +200,9 @@ class Record(Interface):
 
 
 '''
-from radar_server_legacy import Interface, Record, fields
+from radar_server_legacy import interface, Record, fields
 
-class MyInterface(Interface):
+class MyInterface(interface):
     foo = fields.String(key=True)
     bar = fields.Int()
 

@@ -1,8 +1,8 @@
-from ..record import repr_record
-from ..query import repr_query
+from ..record import record_repr
+from ..query import query_repr
 
 
-__all__ = 'Field',
+__all__ = 'field',
 
 
 def default_cast(x):
@@ -14,18 +14,18 @@ def default_resolver(state, field_name, record=None, query=None, query_name=None
         return state[field_name]
     except (KeyError, TypeError):
         query_ref = ''
+        record_ref = ''
 
         if query_name is not None:
             query_ref = query_name
         elif query is not None:
-            query_ref = f' of Query `{repr_query(query)}`'
+            query_ref = f' of {query_repr(query)}'
+        if record is not None:
+            record_ref = f' in {record_repr(record)}'
+        raise KeyError(f'Field `{field_name}` not found{record_ref}{query_ref}.')
 
-        raise KeyError(
-            f'Key `{field_name}` not found {repr_record(record)}{query_ref}.'
-        )
 
-
-def Field(
+def field(
     resolver=default_resolver,
     default=None,
     cast=default_cast,
@@ -41,28 +41,15 @@ def Field(
             else:
                 if default is None:
                     if not_null:
-                        raise ValueError(f'Field `{name}` cannot be null.')
+                        raise ValueError(f'field `{name}` cannot be null.')
                     else:
                         return None
                 else:
                     return default
 
         # setattr(resolve, 'name', key)
-        setattr(resolve, 'key', key)
+        resolve.key = key
         return resolve
 
     return init
 
-
-'''
-from radar_server import fields
-from radar_server_legacy import fields as legacy_fields
-from vital.debug import Timer, Compare
-
-Compare(fields.String, legacy_fields.String).time(1E6, key=True)
-
-foo = fields.String()('foo')
-legacy_foo = legacy_fields.String()
-legacy_foo.__NAME__ = 'foo'
-Compare(foo, legacy_foo.resolve).time(1E6, {'foo': 1.0})
-'''
