@@ -1,3 +1,3 @@
-# radar-resolver
+# radar-server
 
-`poetry add radar-resolver`
+`poetry add radar-server`
