@@ -39,4 +39,3 @@ def mapping(**mapping_fields):
         return field(resolver, *a, **kw)
 
     return create_mapping
-

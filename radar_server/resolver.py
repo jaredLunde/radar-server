@@ -20,6 +20,7 @@ def resolver(**queries):
         def wrapper(resolver):
             name = resolver.__name__
             radar_queries[name] = functools.wraps(resolver)(query(resolver)(name))
+            return radar_queries[name]
 
         return wrapper
 

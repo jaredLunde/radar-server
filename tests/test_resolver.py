@@ -32,7 +32,8 @@ def test_resolver_query_decorator():
     def Foo():
         pass
 
-    assert resolve.queries['Foo']
+    assert resolve.queries['Foo'] is not None
+    assert Foo is not None
 
 
 def test_resolver_init():
