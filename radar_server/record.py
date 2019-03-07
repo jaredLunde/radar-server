@@ -106,8 +106,12 @@ def record(**fields):
 
                 return values
 
-            return resolve_many(resolve_one) if many is True else resolve_one
+            resolve_ = resolve_many(resolve_one) if many is True else resolve_one
+            resolve_.fields = record_fields
+            return resolve_
 
+        init.fields = record_fields
         return init
 
+    create_record.fields = record_fields
     return create_record

@@ -130,3 +130,29 @@ def test_query_deep_py_keys():
     assert values['foo']['idField'] == 1234
     with pytest.raises(KeyError):
         values['foo']['foo']
+
+
+def test_query_requires():
+    @query(foo_bar=Foo())
+    def foo_bar_query(records, **props):
+        assert isinstance(records['foo_bar'], dict)
+        assert records['foo_bar']['id'] is None
+        assert records['foo_bar']['foo'] is None
+        return {
+            'foo_bar': {'id': '1234', 'foo': 'foo'}
+        }
+
+    @query(foo_bar=Foo())
+    def foo_bar_query2(records, **props):
+        assert isinstance(records['foo_bar'], dict)
+        assert records['foo_bar']['id'] is None
+        with pytest.raises(KeyError):
+            records['foo_bar']['foo']
+        return {
+            'foo_bar': {'id': '1234', 'foo': 'foo'}
+        }
+
+    foo_bar_query('foo_bar_query')(None, {'helloWorld': 'hello world'})
+    foo_bar_query2('foo_bar_query')({'foo_bar': {'id': None}}, {'helloWorld': 'hello world'})
+
+

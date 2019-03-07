@@ -18,6 +18,25 @@ def to_py_deep(props):
     }
 
 
+def recursive_require(required, fields):
+    out = {}
+
+    for field_name, field in required.items():
+        if field is None or not len(field):
+            # out[field_name] = recursive_require(fields[field_name], fields[field_name].fields)
+            if hasattr(fields[field_name], 'fields'):
+                out[field_name] = recursive_require(
+                    {key: None for key in fields[field_name].fields},
+                    fields[field_name].fields
+                )
+            else:
+                out[field_name] = None
+        else:
+            out[field_name] = recursive_require(required[field_name], fields[field_name].fields)
+
+    return out
+
+
 def query(**fields):
     query_records = bind(fields)
     empty_requires = {record_name: None for record_name in query_records.keys()}
@@ -33,6 +52,8 @@ def query(**fields):
 
                 if required is not None and len(required):
                     required = to_py_deep(required)
+
+                required = recursive_require(required or empty_requires, query_records)
 
                 if props is not None and len(props):
                     state = resolver(
@@ -52,7 +73,7 @@ def query(**fields):
 
                 values = {}
 
-                for record_name, required_fields in (required or empty_requires).items():
+                for record_name, required_fields in required.items():
                     try:
                         result = query_records[record_name](
                             state[record_name],

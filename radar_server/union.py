@@ -47,9 +47,13 @@ def union(resolve_member_name, **fields):
                 except RecordIsNull:
                     return {to_js_key(record_type): None}
 
-            return resolve_many(resolve_member) if many is True else resolve_member
+            resolve_ = resolve_many(resolve_member) if many is True else resolve_member
+            resolve_.fields = union_members
+            return resolve_
 
+        init.fields = union_members
         return init
 
+    create_union.fields = union_members
     return create_union
 
