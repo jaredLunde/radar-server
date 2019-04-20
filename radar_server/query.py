@@ -1,6 +1,6 @@
 from functools import wraps
 from .exceptions import RecordIsNull
-from .utils import to_py_key, to_js_key, get_repr, bind
+from .utils import to_py_deep, to_js_key, get_repr, bind
 
 
 __all__ = 'query', 'query_repr'
@@ -9,13 +9,6 @@ empty_tuple = tuple()
 
 def query_repr(interface):
     return get_repr('Record', interface)
-
-
-def to_py_deep(props):
-    return {
-        to_py_key(key): val if not isinstance(val, dict) else to_py_deep(val)
-        for key, val in props.items()
-    }
 
 
 def recursive_require(required, fields):

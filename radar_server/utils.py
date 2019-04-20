@@ -1,7 +1,7 @@
 from trie_memoize import memoize
 
 
-__all__ = 'bind', 'get_repr', 'to_js_key', 'to_py_key'
+__all__ = 'bind', 'get_repr', 'to_js_key', 'to_py_key', 'to_py_deep'
 
 
 def bind(fields):
@@ -100,3 +100,10 @@ def to_py_key(key):
             has_alpha = True
         r += char.lower()
     return r
+
+
+def to_py_deep(props):
+    return {
+        to_py_key(key): val if not isinstance(val, dict) else to_py_deep(val)
+        for key, val in props.items()
+    }

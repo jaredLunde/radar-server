@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "radar-server"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = ["Jared Lunde <jared@BeStellar.co>"]
 readme = "README.md"
